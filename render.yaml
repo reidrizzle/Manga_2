@@ -1,0 +1,80 @@
+services:
+  - type: web
+    name: manga-thai-ai-web
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    envVars:
+      - key: APP_NAME
+        value: MangaThai AI
+      - key: APP_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: manga-thai-ai-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: manga-thai-ai-queue
+          property: connectionString
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-6-astra
+      - key: MOCK_MODE
+        value: "true"
+      - key: MAX_UPLOAD_MB
+        value: "20"
+      - key: UPLOAD_LIMIT_PAGES
+        value: "20"
+      - key: COOKIE_HTTPS_ONLY
+        value: "true"
+
+  - type: worker
+    name: manga-thai-ai-worker
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.celery_app.celery_app worker --loglevel=INFO --concurrency=1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: manga-thai-ai-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: manga-thai-ai-queue
+          property: connectionString
+      - key: APP_SECRET
+        fromService:
+          type: web
+          name: manga-thai-ai-web
+          envVarKey: APP_SECRET
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-6-astra
+      - key: MOCK_MODE
+        value: "true"
+
+  - type: keyvalue
+    name: manga-thai-ai-queue
+    plan: free
+    region: singapore
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+    persistenceMode: off
+
+databases:
+  - name: manga-thai-ai-db
+    region: singapore
+    plan: free
+    databaseName: manga_thai_ai
+    user: manga_ai

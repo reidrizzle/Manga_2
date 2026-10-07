@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.db
+.venv/
+.env
+.env.*
+!.env.example
+.idea/
+.vscode/settings.json
+.DS_Store
+node_modules/
+*.log
